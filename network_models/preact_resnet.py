@@ -352,7 +352,7 @@ def preact_resnet1001_cifar(**kwargs):
 
 
 # use it for CIFAR-10
-def preact_resnet32_cifar_32_64_128(**kwargs):
+def preact_resnet32(**kwargs): #cifar_32_64_128
     model = PreAct_ResNet_Cifar(PreActBasicBlock, [5, 5, 5], **kwargs)
     return model
 
