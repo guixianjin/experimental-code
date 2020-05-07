@@ -46,6 +46,30 @@ class part_PN_cifar10_revised_trainset(data.Dataset):  # use it to get selected 
     def __len__(self):
         return len(self.part_train_ind)
 
+class cifar10_revised_valset(data.Dataset):
+    """ clean valdation set """
+    
+    def __init__(self, val_ind): 
+
+        self.trainset = torchvision.datasets.CIFAR10(
+            root = './data/',
+            train = True,
+            download = True,
+            transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.491, 0.482, 0.447],
+                     std=[0.247, 0.243, 0.262])
+                        ])
+                    )   
+                
+        self.ind = val_ind 
+        
+    def __getitem__(self, index):
+        return self.trainset[self.ind[index]]
+
+    def __len__(self):
+        return len(self.ind) 
+
 
 def split_raw_trainset(raw_trainset, noise): # a strafyied sampling
     

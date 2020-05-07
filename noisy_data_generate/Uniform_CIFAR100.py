@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Sun Sep  8 09:25:35 2019
-
-@author: guixj
-"""
-""" copy from new_SN_CIFAR_10 and change to CIFAR_100 """
 
 import numpy as np
 import random
@@ -15,8 +9,8 @@ from torch.utils import data
 from torchvision import transforms
 
 
-class SN_cifar100_revised_trainset(data.Dataset):  
-    """ symmetric noise train set """
+class UN_cifar100_revised_trainset(data.Dataset):  
+    """ uniform label noise train set """
     
     def __init__(self, raw_trainset, train_ind, flip_labels): 
         self.trainset = raw_trainset
@@ -26,7 +20,6 @@ class SN_cifar100_revised_trainset(data.Dataset):
     def __getitem__(self, index): # index in [0, 45000), not raw index
         
         feature, true_label = self.trainset[self.train_ind[index]]
-        #flip_label = symmetric_flip(self.uniform_noise, true_label) #如此写代码是否 label 仍然未固定? deadly bug!!!
         flip_label = self.flip_labels[self.train_ind[index]]
         
         return feature, flip_label, index, true_label  # return index so to recode revised label
@@ -35,8 +28,8 @@ class SN_cifar100_revised_trainset(data.Dataset):
         return len(self.train_ind)
 
 
-class part_SN_cifar100_revised_trainset(data.Dataset):  
-    """ symmetric noise train set """
+class part_UN_cifar100_revised_trainset(data.Dataset):  
+    """ uniform label noise train set """
     
     def __init__(self, raw_trainset, part_train_ind, noise_labels_50000): 
         self.trainset = raw_trainset
@@ -54,72 +47,25 @@ class part_SN_cifar100_revised_trainset(data.Dataset):
         return len(self.part_train_ind)
 
 
-#class random_label_trainset(data.Dataset):  #understanding deep learning requires rethinking generalization
-#    """ random label train set """
-#    
-#    def __init__(self, random_labels): 
-#        self.trainset = torchvision.datasets.CIFAR100(
-#            root = './data/',
-#            train = True,
-#            download = True,
-#            transform = transforms.Compose([
-#                transforms.ToTensor(),
-#                transforms.Normalize(mean=[0.5071, 0.4865, 0.4465],
-#                     std=[0.2673, 0.2564, 0.2762]) # from:gist.github.com/weiaicunzai
-#    ])
-#        )
-#        self.random_labels = random_labels
-#        
-#    def __getitem__(self, index): # index in [0, 45000), but not raw index
-#        
-#        feature, true_label = self.trainset[index]
-#        #random_label = np.random.choice(range(10))  #如此写代码是否 label 仍然未固定
-#        random_label = self.random_labels[index]
-#        return feature, random_label, index, true_label  # return index so to recode revised label
-#
-#    def __len__(self):
-#        return len(self.trainset)
-
+class cifar100_revised_valset(data.Dataset): 
+    """ clean valdation set """
     
-class cifar100_revised_valset(data.Dataset): # a small clean dataset
-    """ a small clean valdation set """
-    
-    def __init__(self, val_ind): # only "val_ind" example used as test 
+    def __init__(self, val_ind):
 
-        self.trainset = \
-            torchvision.datasets.CIFAR100(
-                            root = './data/',
-                            train = True,
-                            download = True,
-                            transform = transforms.Compose([
-                        #        transforms.RandomCrop(32, 4), # 验证集和测试集一样，不应该做数据增强
-                        #        transforms.RandomHorizontalFlip(),
-                                transforms.ToTensor(),
-                                transforms.Normalize(mean=[0.5071, 0.4865, 0.4465],
-                                     std=[0.2673, 0.2564, 0.2762]) # from:  https://gist.github.com/weiaicunzai/e623931921efefd4c331622c344d8151
-                                ])
+        self.trainset = torchvision.datasets.CIFAR100(
+            root = './data/',
+            train = True,
+            download = True,
+            transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.5071, 0.4865, 0.4465],
+                     std=[0.2673, 0.2564, 0.2762]) 
+                ])
             )
-                                
-        from collections import defaultdict
-        self.stratified_ind = defaultdict(list)
-        # 分层采样抽 500 个
-    
-        for ind in val_ind:
-            _, label = self.trainset[ind]
-            self.stratified_ind[label].append(ind)  
-            
-        new_val_ind = []
-        for key, value in self.stratified_ind.items():  # enumerate label1, label2, ...
-            label_i_ind = value
-            sel_ind = np.random.choice(label_i_ind, 50, replace=False) # those selected ind
-            new_val_ind.extend(sel_ind)    
-                
-        self.ind = new_val_ind  # 500 = 50*10
-        print("val size:", len(new_val_ind))
-        
+        self.ind = val_ind
+
     def __getitem__(self, index):   
-        example = self.trainset[self.ind[index]]
-        return example
+        return self.trainset[self.ind[index]]
 
     def __len__(self):
         return len(self.ind) 
@@ -176,14 +122,11 @@ def seed_torch(seed=0):
 
 
 def get_dataset(noise_rate):
-
-    # np.random.seed(10)
-    #seed_torch(20)
     
-    seed_torch(10)  #9月6日
+    seed_torch(10)
     
     normalize = transforms.Normalize(mean=[0.5071, 0.4865, 0.4465],
-                                     std=[0.2673, 0.2564, 0.2762]) # from:gist.github.com/weiaicunzai
+                                     std=[0.2673, 0.2564, 0.2762]) 
     
     raw_trainset = torchvision.datasets.CIFAR100(
         root = './data/',
@@ -196,14 +139,6 @@ def get_dataset(noise_rate):
             normalize,
         ]))
     
-#    raw_trainset_test = torchvision.datasets.CIFAR100(
-#        root = './data/',
-#        train = True,
-#        download = True,
-#        transform = transforms.Compose([ # not use RandomCrop, RandomHorizontalFlip
-#            transforms.ToTensor(),
-#            normalize,
-#        ]))
 
     raw_testset = torchvision.datasets.CIFAR100(
         root = './data/',
@@ -229,25 +164,11 @@ def get_dataset(noise_rate):
     train_ind, val_ind, true_labels, flip_labels = split_raw_trainset(raw_trainset, noise_rate)
 
     my_trainloader = torch.utils.data.DataLoader(
-        SN_cifar100_revised_trainset(raw_trainset, train_ind, flip_labels),
+        UN_cifar100_revised_trainset(raw_trainset, train_ind, flip_labels),
         batch_size = 128,
         shuffle = True,
         )
-    
-#    my_train_loader_test = torch.utils.data.DataLoader(
-#        SN_cifar100_revised_trainset(raw_trainset_test, train_ind, flip_labels),
-#        batch_size = 128,
-#        shuffle = True,
-#        )
-    
-    
-#    random_labels = np.random.choice(range(10), size=50000) # generate random labels
-    
-#    random_trainloader = torch.utils.data.DataLoader(
-#        random_label_trainset(random_labels),
-#        batch_size = 128,
-#        shuffle = True,
-#        )
+
     
     my_valloader = torch.utils.data.DataLoader(
         cifar100_revised_valset(val_ind),
@@ -263,7 +184,7 @@ def get_part_data(part_train_ind, label_50000, need_test_loader=False):
     
     seed_torch(10)
     normalize = transforms.Normalize(mean=[0.5071, 0.4865, 0.4465],
-                                     std=[0.2673, 0.2564, 0.2762]) # from:gist.github.com/weiaicunzai
+                                     std=[0.2673, 0.2564, 0.2762])
 
     raw_trainset = torchvision.datasets.CIFAR100(
         root = './data/',
@@ -277,7 +198,7 @@ def get_part_data(part_train_ind, label_50000, need_test_loader=False):
         ]))
         
     part_trainloader = torch.utils.data.DataLoader(
-        part_SN_cifar100_revised_trainset(raw_trainset, part_train_ind, label_50000),
+        part_UN_cifar100_revised_trainset(raw_trainset, part_train_ind, label_50000),
         batch_size = 128,
         shuffle = True,
         )
@@ -296,7 +217,7 @@ def get_part_data(part_train_ind, label_50000, need_test_loader=False):
             ]))
     
         part_trainloader_test = torch.utils.data.DataLoader(
-            part_SN_cifar100_revised_trainset(raw_trainset_test, part_train_ind, label_50000),
+            part_UN_cifar100_revised_trainset(raw_trainset_test, part_train_ind, label_50000),
             batch_size = 128,
             shuffle = True,
             )
@@ -307,25 +228,17 @@ def get_part_data(part_train_ind, label_50000, need_test_loader=False):
 if __name__ == "__main__":
 
     noise = 0.7
-    raw_trainloader, raw_testloader, my_trainloader, my_valloader, *rest  = get_dataset(noise_rate=noise)
-    
-    
-    for epoch in range(2):
+    for _ in range(2):
+        raw_trainloader, raw_testloader, my_trainloader, my_valloader, *rest  = get_dataset(noise_rate=noise)
         count_y = np.zeros(10)
         for x_batch, y_batch, *rest in my_trainloader:
             for t in range(10):
                 count_y[t] += np.sum(y_batch.numpy() == t)
         print(count_y)
     
-#    [4532. 4468. 4526. 4370. 4542. 4498. 4465. 4518. 4593. 4488.]
-#    [4533. 4437. 4501. 4549. 4544. 4502. 4455. 4454. 4558. 4467.]
-#    # save data
-#    import pickle # pickle 并没有编码 定义的类，需要辅助信息才行
-#    with open(r'./SNdata7_29_noise%.2f.pkl'%noise, 'wb') as inp:
-#        pickle.dump(my_trainloader, inp)
-#        pickle.dump(my_valloader, inp)
-#        pickle.dump(raw_testloader, inp)
-#        pickle.dump(raw_trainloader, inp)
+# [479. 463. 453. 494. 460. 476. 428. 466. 429. 437.]
+# [479. 463. 453. 494. 460. 476. 428. 466. 429. 437.]
+
 
 
 

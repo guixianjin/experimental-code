@@ -48,6 +48,31 @@ class part_PN_cifar100_revised_trainset(data.Dataset):  # use it to get selected
         return len(self.part_train_ind)
 
 
+class cifar100_revised_valset(data.Dataset): 
+    """ clean valdation set """
+    
+    def __init__(self, val_ind):
+
+        self.trainset = torchvision.datasets.CIFAR100(
+            root = './data/',
+            train = True,
+            download = True,
+            transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    mean=[0.5071, 0.4865, 0.4465],
+                    std=[0.2673, 0.2564, 0.2762]) 
+                ])
+            )
+        self.ind = val_ind
+
+    def __getitem__(self, index):   
+        return self.trainset[self.ind[index]]
+
+    def __len__(self):
+        return len(self.ind) 
+    
+
 def split_raw_trainset(raw_trainset, noise): # a strafyied sampling
     
     raw_train_num  = len(raw_trainset)
@@ -147,7 +172,6 @@ def get_dataset(noise_rate):
         shuffle = True,
         )
     
-
     my_valloader = torch.utils.data.DataLoader(
         cifar100_revised_valset(val_ind),
         batch_size = 128,
@@ -206,9 +230,9 @@ def get_part_data(part_train_ind, label_50000, need_test_loader=False):
 if __name__ == "__main__":
 
     noise = 0.7
-    raw_trainloader, raw_testloader, my_trainloader, my_valloader, *rest  = get_dataset(noise_rate=noise)
-    
+
     for epoch in range(2):
+        raw_trainloader, raw_testloader, my_trainloader, my_valloader, *rest  = get_dataset(noise_rate=noise)    
         count_y = np.zeros(10)
         for x_batch, y_batch, *rest in my_trainloader:
             for t in range(10):
@@ -217,10 +241,4 @@ if __name__ == "__main__":
     
 #    [4532. 4468. 4526. 4370. 4542. 4498. 4465. 4518. 4593. 4488.]
 #    [4533. 4437. 4501. 4549. 4544. 4502. 4455. 4454. 4558. 4467.]
-
-
-
-
-
-
 
